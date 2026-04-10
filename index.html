@@ -7,7 +7,7 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <title>七翠救奶奶 - </title>
+    <title>七翠救奶奶 - 仙侠传说</title>
     <style>
       * {
         margin: 0;
@@ -463,7 +463,11 @@
           </div>
           <div class="skill-slot ready" id="skillHeaven">
             🔱<span class="skill-key">天剑</span>
-            <div class="cooldown-overlay" id="cdHeaven" style="height: 0%"></div>
+            <div
+              class="cooldown-overlay"
+              id="cdHeaven"
+              style="height: 0%"
+            ></div>
           </div>
         </div>
       </div>
@@ -711,6 +715,8 @@
           // 武侠风格动作追踪
           this.isMoving = false
           this.runCycle = 0
+          // 劈砍动画角度
+          this.slashAngle = 0
           // 合体时使用的队伍长度
           this.teamLength = 1
         }
@@ -781,10 +787,22 @@
             this.vx = 0
           }
           if (this.y > CONFIG.HEIGHT) this.dead = true
+
+          // 劈砍动画恢复
+          if (this.slashAngle > 0) {
+            this.slashAngle *= 0.85 // 快速收回
+            if (this.slashAngle < 0.01) this.slashAngle = 0
+          }
         }
 
         skillFire() {
-          const damage = 30 * this.weaponLevel * (this.isCombined ? 4 : 1) * (this.isCombined ? 2 : 1)
+          // 劈砍动作
+          this.slashAngle = 1.2
+          const damage =
+            30 *
+            this.weaponLevel *
+            (this.isCombined ? 4 : 1) *
+            (this.isCombined ? 2 : 1)
 
           return {
             x: this.x + this.width / 2,
@@ -801,7 +819,13 @@
         }
 
         skillWater() {
-          const damage = 20 * this.weaponLevel * (this.isCombined ? 4 : 1) * (this.isCombined ? 2 : 1)
+          // 劈砍动作
+          this.slashAngle = 1.0
+          const damage =
+            20 *
+            this.weaponLevel *
+            (this.isCombined ? 4 : 1) *
+            (this.isCombined ? 2 : 1)
           const isCombo = this.isCombined
           const w = isCombo ? 80 : 50
           const h = isCombo ? 40 : 25
@@ -833,23 +857,29 @@
               life: life,
               owner: this,
             },
-            ...(isCombo ? [{
-              x: this.x + this.width / 2,
-              y: this.y,
-              width: w,
-              height: h,
-              damage: damage,
-              type: 'water',
-              vx: spd * 0.7,
-              vy: 3,
-              life: life,
-              owner: this,
-            }] : []),
+            ...(isCombo
+              ? [
+                  {
+                    x: this.x + this.width / 2,
+                    y: this.y,
+                    width: w,
+                    height: h,
+                    damage: damage,
+                    type: 'water',
+                    vx: spd * 0.7,
+                    vy: 3,
+                    life: life,
+                    owner: this,
+                  },
+                ]
+              : []),
           ]
         }
 
         // 技能3: 剑气风暴 - 旋转攻击
         skillBladeStorm() {
+          // 劈砍动作（大幅度的360度旋转）
+          this.slashAngle = 2.5
           const damage = 25 * this.weaponLevel * (this.isCombined ? 6 : 1)
           const attacks = []
 
@@ -875,6 +905,8 @@
 
         // 技能4: 天剑降临 - 从天而降
         skillHeavenSword() {
+          // 劈砍动作（向上猛劈）
+          this.slashAngle = -1.5
           const damage = 50 * this.weaponLevel * (this.isCombined ? 8 : 1)
           const isCombo = this.isCombined
 
@@ -930,7 +962,15 @@
             // 阴影（更大更深）
             ctx.fillStyle = 'rgba(0,0,0,0.4)'
             ctx.beginPath()
-            ctx.ellipse(centerX, this.y + 65 * mechScale, 30 * mechScale, 12 * mechScale, 0, 0, Math.PI * 2)
+            ctx.ellipse(
+              centerX,
+              this.y + 65 * mechScale,
+              30 * mechScale,
+              12 * mechScale,
+              0,
+              0,
+              Math.PI * 2,
+            )
             ctx.fill()
 
             // ===== 机甲核心能量（胸口） =====
@@ -944,7 +984,14 @@
             ctx.shadowBlur = 30 * corePulse * mechScale
 
             // 核心外圈
-            const coreGrad = ctx.createRadialGradient(coreX, coreY, 0, coreX, coreY, coreSize)
+            const coreGrad = ctx.createRadialGradient(
+              coreX,
+              coreY,
+              0,
+              coreX,
+              coreY,
+              coreSize,
+            )
             coreGrad.addColorStop(0, '#ffffff')
             coreGrad.addColorStop(0.3, '#FFD700')
             coreGrad.addColorStop(0.6, '#FF6600')
@@ -1006,43 +1053,103 @@
             // 左肩甲
             ctx.fillStyle = '#FFD700'
             ctx.beginPath()
-            ctx.ellipse(centerX - 38 * mechScale, shoulderY, shoulderW, shoulderH, -0.3, 0, Math.PI * 2)
+            ctx.ellipse(
+              centerX - 38 * mechScale,
+              shoulderY,
+              shoulderW,
+              shoulderH,
+              -0.3,
+              0,
+              Math.PI * 2,
+            )
             ctx.fill()
             ctx.fillStyle = CONFIG.TEAM_COLORS[0] || '#ff0000'
             ctx.beginPath()
-            ctx.ellipse(centerX - 38 * mechScale, shoulderY, shoulderW * 0.6, shoulderH * 0.6, -0.3, 0, Math.PI * 2)
+            ctx.ellipse(
+              centerX - 38 * mechScale,
+              shoulderY,
+              shoulderW * 0.6,
+              shoulderH * 0.6,
+              -0.3,
+              0,
+              Math.PI * 2,
+            )
             ctx.fill()
 
             // 右肩甲
             ctx.fillStyle = '#FFD700'
             ctx.beginPath()
-            ctx.ellipse(centerX + 38 * mechScale, shoulderY, shoulderW, shoulderH, 0.3, 0, Math.PI * 2)
+            ctx.ellipse(
+              centerX + 38 * mechScale,
+              shoulderY,
+              shoulderW,
+              shoulderH,
+              0.3,
+              0,
+              Math.PI * 2,
+            )
             ctx.fill()
             ctx.fillStyle = CONFIG.TEAM_COLORS[num翠 - 1] || '#ff00ff'
             ctx.beginPath()
-            ctx.ellipse(centerX + 38 * mechScale, shoulderY, shoulderW * 0.6, shoulderH * 0.6, 0.3, 0, Math.PI * 2)
+            ctx.ellipse(
+              centerX + 38 * mechScale,
+              shoulderY,
+              shoulderW * 0.6,
+              shoulderH * 0.6,
+              0.3,
+              0,
+              Math.PI * 2,
+            )
             ctx.fill()
 
             // ===== 手臂 =====
-            const armBounce = this.isMoving && this.onGround ? Math.sin(this.runCycle) * 4 : 0
-            const armSwing = this.isMoving && this.onGround ? Math.sin(this.runCycle) * 10 : 0
+            const armBounce =
+              this.isMoving && this.onGround ? Math.sin(this.runCycle) * 4 : 0
+            const armSwing =
+              this.isMoving && this.onGround ? Math.sin(this.runCycle) * 10 : 0
 
             // 左臂
             ctx.fillStyle = '#2a2a4e'
             ctx.beginPath()
             ctx.moveTo(centerX - 35 * mechScale, shoulderY + 5)
-            ctx.quadraticCurveTo(centerX - 55 * mechScale - armSwing, shoulderY + 25 * mechScale + armBounce, centerX - 50 * mechScale - armSwing, shoulderY + 50 * mechScale + armBounce)
-            ctx.lineTo(centerX - 40 * mechScale - armSwing, shoulderY + 48 * mechScale + armBounce)
-            ctx.quadraticCurveTo(centerX - 45 * mechScale, shoulderY + 30 * mechScale, centerX - 30 * mechScale, shoulderY + 20)
+            ctx.quadraticCurveTo(
+              centerX - 55 * mechScale - armSwing,
+              shoulderY + 25 * mechScale + armBounce,
+              centerX - 50 * mechScale - armSwing,
+              shoulderY + 50 * mechScale + armBounce,
+            )
+            ctx.lineTo(
+              centerX - 40 * mechScale - armSwing,
+              shoulderY + 48 * mechScale + armBounce,
+            )
+            ctx.quadraticCurveTo(
+              centerX - 45 * mechScale,
+              shoulderY + 30 * mechScale,
+              centerX - 30 * mechScale,
+              shoulderY + 20,
+            )
             ctx.fill()
 
             // 右臂（持剑，更大）
             ctx.fillStyle = '#2a2a4e'
             ctx.beginPath()
             ctx.moveTo(centerX + 35 * mechScale, shoulderY + 5)
-            ctx.quadraticCurveTo(centerX + 60 * mechScale + armSwing, shoulderY + 20 * mechScale, centerX + 55 * mechScale + armSwing, shoulderY + 45 * mechScale + armBounce)
-            ctx.lineTo(centerX + 45 * mechScale + armSwing, shoulderY + 43 * mechScale + armBounce)
-            ctx.quadraticCurveTo(centerX + 50 * mechScale, shoulderY + 25 * mechScale, centerX + 30 * mechScale, shoulderY + 20)
+            ctx.quadraticCurveTo(
+              centerX + 60 * mechScale + armSwing,
+              shoulderY + 20 * mechScale,
+              centerX + 55 * mechScale + armSwing,
+              shoulderY + 45 * mechScale + armBounce,
+            )
+            ctx.lineTo(
+              centerX + 45 * mechScale + armSwing,
+              shoulderY + 43 * mechScale + armBounce,
+            )
+            ctx.quadraticCurveTo(
+              centerX + 50 * mechScale,
+              shoulderY + 25 * mechScale,
+              centerX + 30 * mechScale,
+              shoulderY + 20,
+            )
             ctx.fill()
 
             // ===== 机甲头部（嵌入头像） =====
@@ -1069,7 +1176,13 @@
               ctx.beginPath()
               ctx.arc(0, 0, headSize, 0, Math.PI * 2)
               ctx.clip()
-              ctx.drawImage(this.avatar, -headSize, -headSize, headSize * 2, headSize * 2)
+              ctx.drawImage(
+                this.avatar,
+                -headSize,
+                -headSize,
+                headSize * 2,
+                headSize * 2,
+              )
               ctx.restore()
             } else {
               ctx.fillStyle = '#f5d5a8'
@@ -1079,37 +1192,44 @@
             }
             ctx.shadowBlur = 0
 
-            // ===== 保健剑（机甲手臂持握，超大！） =====
+            // ===== 保健剑（机甲手臂持握，剑柄在右上方，握在手里） =====
             if (this.weaponImg && this.weaponImg.complete) {
               ctx.save()
 
-              // 剑柄在右手机甲手掌位置
-              const swordX = centerX + 50 * mechScale + armSwing
-              const swordY = shoulderY + 45 * mechScale + armBounce
+              // 剑柄位置在右手（手的位置）
+              const handX = centerX + 45 * mechScale + armSwing
+              const handY = shoulderY + 40 * mechScale + armBounce
 
-              ctx.translate(swordX, swordY)
+              ctx.translate(handX, handY)
               if (this.facing === -1) ctx.scale(-1, 1)
+
+              // 旋转180度：剑柄在上（朝向右上），剑尖在下
+              ctx.rotate(Math.PI)
+
+              // 劈砍动作（释放技能时）
+              const slashAngle = this.slashAngle || 0
+              ctx.rotate(slashAngle)
 
               // 剑光效果
               const swordGlow = Math.sin(time * 5) * 0.3 + 0.7
               ctx.shadowColor = `rgba(255, 215, 0, ${swordGlow})`
               ctx.shadowBlur = 25 * mechScale
 
-              // 超大剑身
-              const swordW = 35 * mechScale
-              const swordH = 80 * mechScale
+              // 统一缩放（合体形态更大一些）
+              const scale = 1.5 * mechScale
+              ctx.scale(scale, scale)
 
-              // 剑稍微倾斜（攻击姿态）
-              ctx.rotate(-0.3)
+              // 绘制宝剑，剑柄在手位置，剑尖向下
+              const w = this.weaponImg.naturalWidth || 28
+              const h = this.weaponImg.naturalHeight || 55
+              ctx.drawImage(this.weaponImg, -w / 2, 0, w, h)
 
-              ctx.drawImage(this.weaponImg, 0, -swordH, swordW, swordH)
-
-              // 剑气尾焰
+              // 剑气尾焰（剑尖处）
               ctx.strokeStyle = `rgba(255, 200, 50, ${swordGlow * 0.6})`
-              ctx.lineWidth = 4 * mechScale
+              ctx.lineWidth = 2
               ctx.beginPath()
-              ctx.moveTo(swordW * 0.3, -swordH * 0.95)
-              ctx.lineTo(swordW * 0.3, -swordH * 1.2)
+              ctx.moveTo(0, h * 0.85)
+              ctx.lineTo(0, h * 1.1)
               ctx.stroke()
 
               ctx.restore()
@@ -1132,7 +1252,15 @@
             ctx.strokeStyle = '#FFD700'
             ctx.lineWidth = 4 * mechScale
             ctx.beginPath()
-            ctx.ellipse(centerX, coreY, 50 * mechScale, 30 * mechScale, 0, 0, Math.PI * 2)
+            ctx.ellipse(
+              centerX,
+              coreY,
+              50 * mechScale,
+              30 * mechScale,
+              0,
+              0,
+              Math.PI * 2,
+            )
             ctx.stroke()
             ctx.globalAlpha = 1
 
@@ -1374,48 +1502,50 @@
             ctx.fill()
           }
 
-          // 5. 武器 - 保健剑（握在手中，更大）
+          // 5. 武器 - 保健剑（握在手中右上方向，剑柄在上，不变形）
           if (this.weaponImg && this.weaponImg.complete) {
             ctx.save()
 
-            // 剑握在右手中（朝向移动方向）
-            const swordBaseX = sx + 18 + 12 * this.facing
-            const swordBaseY = this.y + 32 // 手的高度
+            // 剑握在右手中（手的位置）
+            const handX = sx + 32 + 8 * this.facing
+            const handY = this.y + 35
 
-            ctx.translate(swordBaseX, swordBaseY)
+            // 劈砍动作动画（释放技能时）
+            const slashAngle = this.slashAngle || 0
+            // 轻微的上下挥动动画
+            const swingOffset = this.onGround
+              ? Math.sin(time * 2 + this.index) * 2
+              : -4
+            // 跳跃时剑举得更高
+            const jumpScale = !this.onGround ? 1.1 : 1
+            // 统一缩放不变形
+            const scale = 1.0 * jumpScale
+
+            ctx.translate(handX, handY + swingOffset)
 
             // 根据朝向翻转
             if (this.facing === -1) {
               ctx.scale(-1, 1)
             }
 
+            // 旋转180度：剑柄在上，剑尖在下
+            ctx.rotate(Math.PI)
+
+            // 劈砍动作
+            ctx.rotate(slashAngle)
+
             // 剑光效果
             const swordGlow = Math.sin(time * 3) * 0.3 + 0.7
             ctx.shadowColor = `rgba(255, 215, 0, ${swordGlow})`
             ctx.shadowBlur = 15
 
-            // 剑身倾斜向上（攻击姿态）
-            ctx.rotate(-0.2)
+            ctx.scale(scale, scale)
 
-            // 轻微的上下挥动动画
-            const swingOffset = this.onGround
-              ? Math.sin(time * 2 + this.index) * 2
-              : -4
-            ctx.translate(0, swingOffset)
-
-            // 跳跃时剑举得更高
-            const jumpScale = !this.onGround ? 1.2 : 1
-
-            // 绘制宝剑（更大）
-            ctx.drawImage(this.weaponImg, 0, -60 * jumpScale, 28 * jumpScale, 55 * jumpScale)
-
-            // 剑光芒
-            ctx.strokeStyle = `rgba(255, 255, 200, ${swordGlow * 0.4})`
-            ctx.lineWidth = 2
-            ctx.beginPath()
-            ctx.moveTo(28 * jumpScale * 0.3, -60 * jumpScale * 0.95)
-            ctx.lineTo(28 * jumpScale * 0.3, -60 * jumpScale * 0.1)
-            ctx.stroke()
+            // 绘制宝剑，剑柄（顶部）在手位置，剑尖（底部）向下
+            const w = this.weaponImg.naturalWidth || 28
+            const h = this.weaponImg.naturalHeight || 55
+            // 剑柄在手位置，所以从(0,0)开始画，剑尖向下
+            ctx.drawImage(this.weaponImg, -w / 2, 0, w, h)
 
             ctx.restore()
           }
@@ -2512,13 +2642,16 @@
 
               // 绘制旋转的剑气
               for (let i = 0; i < 3; i++) {
-                const angle = time + (i * Math.PI * 2 / 3)
+                const angle = time + (i * Math.PI * 2) / 3
                 const len = 25 + Math.sin(time * 2) * 5
                 this.ctx.strokeStyle = `rgba(153, 51, 255, ${0.8 - i * 0.2})`
                 this.ctx.lineWidth = 6 - i * 1.5
                 this.ctx.beginPath()
                 this.ctx.moveTo(bx, by)
-                this.ctx.lineTo(bx + Math.cos(angle) * len, by + Math.sin(angle) * len)
+                this.ctx.lineTo(
+                  bx + Math.cos(angle) * len,
+                  by + Math.sin(angle) * len,
+                )
                 this.ctx.stroke()
               }
 
@@ -2537,7 +2670,12 @@
               this.ctx.shadowBlur = 30
 
               // 巨大剑身
-              const swordGrad = this.ctx.createLinearGradient(bx - a.width / 2, by, bx + a.width / 2, by)
+              const swordGrad = this.ctx.createLinearGradient(
+                bx - a.width / 2,
+                by,
+                bx + a.width / 2,
+                by,
+              )
               swordGrad.addColorStop(0, '#ffffff')
               swordGrad.addColorStop(0.3, '#00bcd4')
               swordGrad.addColorStop(0.5, '#00e5ff')
@@ -2565,7 +2703,7 @@
               this.ctx.stroke()
 
               // 冲击波
-              const waveAlpha = a.life / 60 * 0.5
+              const waveAlpha = (a.life / 60) * 0.5
               this.ctx.strokeStyle = `rgba(0, 188, 212, ${waveAlpha})`
               this.ctx.lineWidth = 4
               this.ctx.beginPath()
