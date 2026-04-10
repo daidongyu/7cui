@@ -7,7 +7,7 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <title>七翠救奶奶 - 仙侠传说</title>
+    <title>七翠救奶奶 - </title>
     <style>
       * {
         margin: 0;
@@ -292,15 +292,6 @@
         box-shadow: 0 2px 0 rgba(0, 0, 0, 0.5);
       }
 
-      .btn-attack {
-        background: linear-gradient(145deg, #e74c3c, #c0392b);
-        box-shadow: 0 6px 0 #922b21;
-      }
-
-      .btn-attack:active {
-        box-shadow: 0 2px 0 #922b21;
-      }
-
       .btn-fire {
         background: linear-gradient(145deg, #ff6600, #cc3300);
         box-shadow: 0 6px 0 #992200;
@@ -328,6 +319,24 @@
 
       .btn-combine:active {
         box-shadow: 0 2px 0 #6c3483;
+      }
+
+      .btn-blade {
+        background: linear-gradient(145deg, #9933ff, #7b1fa2);
+        box-shadow: 0 6px 0 #4a148c;
+      }
+
+      .btn-blade:active {
+        box-shadow: 0 2px 0 #4a148c;
+      }
+
+      .btn-heaven {
+        background: linear-gradient(145deg, #00bcd4, #00838f);
+        box-shadow: 0 6px 0 #006064;
+      }
+
+      .btn-heaven:active {
+        box-shadow: 0 2px 0 #006064;
       }
 
       .btn-label {
@@ -448,6 +457,14 @@
             💧<span class="skill-key">水</span>
             <div class="cooldown-overlay" id="cdWater" style="height: 0%"></div>
           </div>
+          <div class="skill-slot ready" id="skillBlade">
+            ⚡<span class="skill-key">剑气</span>
+            <div class="cooldown-overlay" id="cdBlade" style="height: 0%"></div>
+          </div>
+          <div class="skill-slot ready" id="skillHeaven">
+            🔱<span class="skill-key">天剑</span>
+            <div class="cooldown-overlay" id="cdHeaven" style="height: 0%"></div>
+          </div>
         </div>
       </div>
 
@@ -472,8 +489,13 @@
             <div class="action-btn btn-combine" id="btnCombine">
               合体<span class="btn-label">2人+</span>
             </div>
-            <div class="action-btn btn-attack" id="btnAttack">
-              ⚔️<span class="btn-label">普攻</span>
+          </div>
+          <div class="action-row">
+            <div class="action-btn btn-blade" id="btnBlade">
+              ⚡<span class="btn-label">剑气</span>
+            </div>
+            <div class="action-btn btn-heaven" id="btnHeaven">
+              🔱<span class="btn-label">天剑</span>
             </div>
           </div>
         </div>
@@ -606,10 +628,11 @@
           bindTouch('btnRight', 'arrowright')
           bindTouch('btnUp', 'arrowup')
           bindTouch('btnDown', 'arrowdown')
-          bindTouch('btnAttack', 'z')
           bindTouch('btnFire', 'x')
           bindTouch('btnWater', 'c')
           bindTouch('btnCombine', 'v')
+          bindTouch('btnBlade', 'b')
+          bindTouch('btnHeaven', 'n')
         }
 
         // 点击触发（不受时序影响）
@@ -760,28 +783,6 @@
           if (this.y > CONFIG.HEIGHT) this.dead = true
         }
 
-        attack() {
-          const damage = this.weaponLevel * (this.isCombined ? 4 : 1) * (this.isCombined ? 3 : 1)
-          const range = 70 + this.weaponLevel * 5 + (this.isCombined ? 40 : 0)
-
-          // 攻击范围从角色中心向外扩展，确保近距离也能攻击到
-          const attackX = this.facing === 1 ? this.x - range / 2 : this.x - range / 2
-
-          return {
-            x: attackX,
-            y: this.y + 10,
-            width: range,
-            height: 50,
-            damage: damage,
-            type: 'sword',
-            life: 15,
-            owner: this,
-            // 攻击特效参数
-            isSweep: true,
-            sweepAngle: this.facing * 0.3,
-          }
-        }
-
         skillFire() {
           const damage = 30 * this.weaponLevel * (this.isCombined ? 4 : 1) * (this.isCombined ? 2 : 1)
 
@@ -847,6 +848,52 @@
           ]
         }
 
+        // 技能3: 剑气风暴 - 旋转攻击
+        skillBladeStorm() {
+          const damage = 25 * this.weaponLevel * (this.isCombined ? 6 : 1)
+          const attacks = []
+
+          // 8方向剑气
+          const directions = 8
+          for (let i = 0; i < directions; i++) {
+            const angle = (i / directions) * Math.PI * 2
+            attacks.push({
+              x: this.x + this.width / 2,
+              y: this.y + 30,
+              width: 50,
+              height: 30,
+              damage: damage,
+              type: 'bladestorm',
+              vx: Math.cos(angle) * 5,
+              vy: Math.sin(angle) * 5,
+              life: 30,
+              owner: this,
+            })
+          }
+          return attacks
+        }
+
+        // 技能4: 天剑降临 - 从天而降
+        skillHeavenSword() {
+          const damage = 50 * this.weaponLevel * (this.isCombined ? 8 : 1)
+          const isCombo = this.isCombined
+
+          return {
+            x: this.x + this.width / 2 - (isCombo ? 60 : 40),
+            y: -50, // 从屏幕顶部
+            width: isCombo ? 120 : 80,
+            height: isCombo ? 150 : 100,
+            damage: damage,
+            type: 'heavensword',
+            vx: 0,
+            vy: 8,
+            life: 60,
+            owner: this,
+            // 落点记录
+            targetY: this.y - 20,
+          }
+        }
+
         takeDamage(dmg) {
           if (this.isCombined) dmg = Math.floor(dmg / 2)
           this.hp -= dmg
@@ -871,142 +918,154 @@
 
           ctx.save()
 
-          // ===== 合体形态 - 一个更强大的大人物 =====
+          // ===== 合体形态 - 真正的战斗机甲 =====
           if (this.isCombined) {
-            // 根据翠翠数量决定体型大小（每增加一个+0.15）
-            const comboScale = 1.0 + (this.teamLength * 0.15)
-            const baseWidth = 40 * comboScale
-            const baseHeight = 60 * comboScale
+            // 翠翠数量决定机甲强度
+            const num翠 = this.teamLength
+            const mechScale = 1.0 + (num翠 - 1) * 0.25 // 每个翠翠增加25%大小
             const centerX = sx + 20
-            const bodyTop = this.y
+            const bodyTop = this.y - 10 * (mechScale - 1) // 越高大越靠上
+            const time = Date.now() / 200
 
-            // 阴影（更大）
-            ctx.fillStyle = 'rgba(0,0,0,0.3)'
+            // 阴影（更大更深）
+            ctx.fillStyle = 'rgba(0,0,0,0.4)'
             ctx.beginPath()
-            ctx.ellipse(centerX, this.y + baseHeight - 5, 22 * comboScale, 10 * comboScale, 0, 0, Math.PI * 2)
+            ctx.ellipse(centerX, this.y + 65 * mechScale, 30 * mechScale, 12 * mechScale, 0, 0, Math.PI * 2)
             ctx.fill()
 
-            // 飘带动画
-            const sway = Math.sin(time + this.index) * 5
+            // ===== 机甲核心能量（胸口） =====
+            const coreX = centerX
+            const coreY = bodyTop + 40 * mechScale
+            const coreSize = 15 * mechScale
+            const corePulse = Math.sin(time * 3) * 0.2 + 0.8
 
-            // 1. 仙侠长袍（合体版，更大更威武）
-            const robeJumpOffset = !this.onGround ? -5 * comboScale : 0
-            const robeGrad = ctx.createLinearGradient(
-              centerX - baseWidth * 0.5,
-              bodyTop + 25 * comboScale + robeJumpOffset,
-              centerX + baseWidth * 0.5,
-              bodyTop + baseHeight,
-            )
-            robeGrad.addColorStop(0, this.color)
-            robeGrad.addColorStop(0.5, this.darkenColor(this.color, -20))
-            robeGrad.addColorStop(1, this.darkenColor(this.color, -40))
-            ctx.fillStyle = robeGrad
+            // 能量核心发光
+            ctx.shadowColor = '#FFD700'
+            ctx.shadowBlur = 30 * corePulse * mechScale
 
-            // 袍身主体（更大）
+            // 核心外圈
+            const coreGrad = ctx.createRadialGradient(coreX, coreY, 0, coreX, coreY, coreSize)
+            coreGrad.addColorStop(0, '#ffffff')
+            coreGrad.addColorStop(0.3, '#FFD700')
+            coreGrad.addColorStop(0.6, '#FF6600')
+            coreGrad.addColorStop(1, '#FF0000')
+            ctx.fillStyle = coreGrad
             ctx.beginPath()
-            ctx.moveTo(centerX - 14 * comboScale, bodyTop + 25 * comboScale + robeJumpOffset)
-            ctx.lineTo(centerX - 18 * comboScale, bodyTop + baseHeight - 5)
-            ctx.lineTo(centerX - 8 * comboScale, bodyTop + baseHeight - 10)
-            ctx.lineTo(centerX, bodyTop + baseHeight)
-            ctx.lineTo(centerX + 8 * comboScale, bodyTop + baseHeight - 10)
-            ctx.lineTo(centerX + 18 * comboScale, bodyTop + baseHeight - 5)
-            ctx.lineTo(centerX + 14 * comboScale, bodyTop + 25 * comboScale + robeJumpOffset)
+            ctx.arc(coreX, coreY, coreSize, 0, Math.PI * 2)
+            ctx.fill()
+
+            // ===== 机甲身体（多层护甲） =====
+            // 底层护甲
+            ctx.fillStyle = '#1a1a2e'
+            ctx.beginPath()
+            ctx.moveTo(centerX - 35 * mechScale, bodyTop + 15 * mechScale)
+            ctx.lineTo(centerX - 40 * mechScale, bodyTop + 55 * mechScale)
+            ctx.lineTo(centerX - 25 * mechScale, bodyTop + 65 * mechScale)
+            ctx.lineTo(centerX, bodyTop + 70 * mechScale)
+            ctx.lineTo(centerX + 25 * mechScale, bodyTop + 65 * mechScale)
+            ctx.lineTo(centerX + 40 * mechScale, bodyTop + 55 * mechScale)
+            ctx.lineTo(centerX + 35 * mechScale, bodyTop + 15 * mechScale)
             ctx.closePath()
             ctx.fill()
 
-            // 袍摆飘带（合体版）
-            const robeSway = !this.onGround ? sway * 1.5 : sway
-            ctx.fillStyle = this.color
-            ctx.globalAlpha = 0.7
-            ctx.beginPath()
-            ctx.moveTo(centerX - 15 * comboScale, bodyTop + 50 * comboScale + robeJumpOffset)
-            ctx.quadraticCurveTo(
-              centerX - 25 * comboScale + robeSway,
-              bodyTop + baseHeight - 10,
-              centerX - 18 * comboScale + robeSway * 1.5,
-              bodyTop + baseHeight + 5,
-            )
-            ctx.lineTo(centerX - 10 * comboScale, bodyTop + baseHeight - 5)
-            ctx.fill()
+            // 中层护甲（彩虹条纹代表各色翠翠）
+            for (let i = 0; i < num翠; i++) {
+              const stripeY = bodyTop + 20 * mechScale + i * 12 * mechScale
+              const stripeColor = CONFIG.TEAM_COLORS[i]
+              const stripeH = 10 * mechScale
+              ctx.fillStyle = stripeColor
+              ctx.globalAlpha = 0.9
+              ctx.beginPath()
+              ctx.moveTo(centerX - 30 * mechScale + i * 2, stripeY)
+              ctx.lineTo(centerX - 35 * mechScale + i * 3, stripeY + stripeH)
+              ctx.lineTo(centerX + 35 * mechScale - i * 3, stripeY + stripeH)
+              ctx.lineTo(centerX + 30 * mechScale - i * 2, stripeY)
+              ctx.closePath()
+              ctx.fill()
+            }
             ctx.globalAlpha = 1
 
-            // 2. 宽大袖子（合体版）
-            const runBounce = this.isMoving && this.onGround ? Math.sin(this.runCycle) * 3 : 0
-            const armSwing = this.isMoving && this.onGround ? Math.sin(this.runCycle) * 8 : 0
-            const jumpArmOffset = !this.onGround ? -12 : 0
-            ctx.fillStyle = this.darkenColor(this.color, -10)
-            // 左袖
+            // 能量管道
+            ctx.strokeStyle = '#FFD700'
+            ctx.lineWidth = 3 * mechScale
+            ctx.shadowColor = '#FFD700'
+            ctx.shadowBlur = 10
             ctx.beginPath()
-            ctx.moveTo(centerX - 14 * comboScale, bodyTop + 28 * comboScale - runBounce + jumpArmOffset)
-            ctx.quadraticCurveTo(
-              centerX - 30 * comboScale - armSwing,
-              bodyTop + 40 * comboScale + jumpArmOffset,
-              centerX - 28 * comboScale - armSwing,
-              bodyTop + 55 * comboScale + runBounce + jumpArmOffset,
-            )
-            ctx.quadraticCurveTo(
-              centerX - 18 * comboScale,
-              bodyTop + 48 * comboScale,
-              centerX - 12 * comboScale,
-              bodyTop + 38 * comboScale - runBounce + jumpArmOffset,
-            )
-            ctx.fill()
-            // 右袖（握剑的手这边更大）
-            ctx.beginPath()
-            ctx.moveTo(centerX + 14 * comboScale, bodyTop + 28 * comboScale - runBounce + jumpArmOffset)
-            ctx.quadraticCurveTo(
-              centerX + 35 * comboScale + armSwing,
-              bodyTop + 38 * comboScale + jumpArmOffset,
-              centerX + 32 * comboScale + armSwing,
-              bodyTop + 50 * comboScale + runBounce + jumpArmOffset,
-            )
-            ctx.quadraticCurveTo(
-              centerX + 22 * comboScale,
-              bodyTop + 45 * comboScale,
-              centerX + 12 * comboScale,
-              bodyTop + 38 * comboScale - runBounce + jumpArmOffset,
-            )
-            ctx.fill()
+            ctx.moveTo(centerX - 15, bodyTop + 20 * mechScale)
+            ctx.lineTo(centerX - 10, coreY - coreSize)
+            ctx.moveTo(centerX + 15, bodyTop + 20 * mechScale)
+            ctx.lineTo(centerX + 10, coreY - coreSize)
+            ctx.stroke()
+            ctx.shadowBlur = 0
 
-            // 3. 金色腰带（合体版）
+            // ===== 肩甲 =====
+            const shoulderY = bodyTop + 15 * mechScale
+            const shoulderW = 20 * mechScale
+            const shoulderH = 15 * mechScale
+
+            // 左肩甲
             ctx.fillStyle = '#FFD700'
-            ctx.fillRect(centerX - 14 * comboScale, bodyTop + 35 * comboScale, 28 * comboScale, 6 * comboScale)
-            ctx.fillStyle = '#FFA500'
-            ctx.fillRect(centerX - 2 * comboScale, bodyTop + 33 * comboScale, 4 * comboScale, 10 * comboScale)
-            ctx.fillStyle = this.color
             ctx.beginPath()
-            ctx.arc(centerX, bodyTop + 38 * comboScale, 4 * comboScale, 0, Math.PI * 2)
+            ctx.ellipse(centerX - 38 * mechScale, shoulderY, shoulderW, shoulderH, -0.3, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.fillStyle = CONFIG.TEAM_COLORS[0] || '#ff0000'
+            ctx.beginPath()
+            ctx.ellipse(centerX - 38 * mechScale, shoulderY, shoulderW * 0.6, shoulderH * 0.6, -0.3, 0, Math.PI * 2)
             ctx.fill()
 
-            // 4. 头部（只有一个头像，但更大）
-            const headBob = this.isMoving && this.onGround ? Math.sin(this.runCycle * 2) * 2 : 0
-            const jumpHeadOffset = !this.onGround ? -5 : 0
-            const headSize = 15 * comboScale
-            const headY = bodyTop + 15 * comboScale + headBob + jumpHeadOffset
-
-            // 发髻
-            ctx.fillStyle = '#2a1a0a'
-            ctx.beginPath()
-            ctx.arc(centerX, headY + headSize * 0.3, headSize, Math.PI, 0)
-            ctx.fill()
-            ctx.fillRect(centerX - headSize, headY - headSize * 0.5, headSize * 2, headSize * 0.8)
-            // 发髻顶
-            ctx.beginPath()
-            ctx.arc(centerX, headY - headSize * 0.3, headSize * 0.5, 0, Math.PI * 2)
-            ctx.fill()
-            // 发簪
+            // 右肩甲
             ctx.fillStyle = '#FFD700'
-            ctx.fillRect(centerX - 2 * comboScale, headY - headSize * 0.8, 4 * comboScale, headSize * 0.8)
             ctx.beginPath()
-            ctx.arc(centerX, headY - headSize * 0.6, 3 * comboScale, 0, Math.PI * 2)
+            ctx.ellipse(centerX + 38 * mechScale, shoulderY, shoulderW, shoulderH, 0.3, 0, Math.PI * 2)
+            ctx.fill()
+            ctx.fillStyle = CONFIG.TEAM_COLORS[num翠 - 1] || '#ff00ff'
+            ctx.beginPath()
+            ctx.ellipse(centerX + 38 * mechScale, shoulderY, shoulderW * 0.6, shoulderH * 0.6, 0.3, 0, Math.PI * 2)
             ctx.fill()
 
-            // 头像（只有一个，保留原始）
+            // ===== 手臂 =====
+            const armBounce = this.isMoving && this.onGround ? Math.sin(this.runCycle) * 4 : 0
+            const armSwing = this.isMoving && this.onGround ? Math.sin(this.runCycle) * 10 : 0
+
+            // 左臂
+            ctx.fillStyle = '#2a2a4e'
+            ctx.beginPath()
+            ctx.moveTo(centerX - 35 * mechScale, shoulderY + 5)
+            ctx.quadraticCurveTo(centerX - 55 * mechScale - armSwing, shoulderY + 25 * mechScale + armBounce, centerX - 50 * mechScale - armSwing, shoulderY + 50 * mechScale + armBounce)
+            ctx.lineTo(centerX - 40 * mechScale - armSwing, shoulderY + 48 * mechScale + armBounce)
+            ctx.quadraticCurveTo(centerX - 45 * mechScale, shoulderY + 30 * mechScale, centerX - 30 * mechScale, shoulderY + 20)
+            ctx.fill()
+
+            // 右臂（持剑，更大）
+            ctx.fillStyle = '#2a2a4e'
+            ctx.beginPath()
+            ctx.moveTo(centerX + 35 * mechScale, shoulderY + 5)
+            ctx.quadraticCurveTo(centerX + 60 * mechScale + armSwing, shoulderY + 20 * mechScale, centerX + 55 * mechScale + armSwing, shoulderY + 45 * mechScale + armBounce)
+            ctx.lineTo(centerX + 45 * mechScale + armSwing, shoulderY + 43 * mechScale + armBounce)
+            ctx.quadraticCurveTo(centerX + 50 * mechScale, shoulderY + 25 * mechScale, centerX + 30 * mechScale, shoulderY + 20)
+            ctx.fill()
+
+            // ===== 机甲头部（嵌入头像） =====
+            const headY = bodyTop + 5 * mechScale
+            const headSize = 18 * mechScale
+
+            // 头盔外框
+            ctx.fillStyle = '#FFD700'
+            ctx.shadowColor = '#FFD700'
+            ctx.shadowBlur = 15 * mechScale
+            ctx.beginPath()
+            ctx.arc(centerX, headY, headSize + 5, Math.PI * 1.1, Math.PI * 1.9)
+            ctx.lineTo(centerX + headSize + 3, headY + 8)
+            ctx.lineTo(centerX + headSize + 8, headY + 3)
+            ctx.lineTo(centerX + headSize + 5, headY - 3)
+            ctx.stroke()
+
+            // 头像
             if (this.avatar && this.avatar.complete) {
               ctx.save()
               ctx.translate(centerX, headY)
-              ctx.shadowColor = 'rgba(255,255,255,0.4)'
-              ctx.shadowBlur = 12
+              ctx.shadowColor = '#ffffff'
+              ctx.shadowBlur = 20 * mechScale
               ctx.beginPath()
               ctx.arc(0, 0, headSize, 0, Math.PI * 2)
               ctx.clip()
@@ -1018,65 +1077,74 @@
               ctx.arc(centerX, headY, headSize, 0, Math.PI * 2)
               ctx.fill()
             }
+            ctx.shadowBlur = 0
 
-            // 5. 保健剑 - 握在手中（不是背着的！）
+            // ===== 保健剑（机甲手臂持握，超大！） =====
             if (this.weaponImg && this.weaponImg.complete) {
               ctx.save()
 
-              // 剑柄位置在右手中
-              const swordBaseX = centerX + 20 * comboScale * this.facing
-              const swordBaseY = bodyTop + 40 * comboScale
+              // 剑柄在右手机甲手掌位置
+              const swordX = centerX + 50 * mechScale + armSwing
+              const swordY = shoulderY + 45 * mechScale + armBounce
 
-              ctx.translate(swordBaseX, swordBaseY)
+              ctx.translate(swordX, swordY)
+              if (this.facing === -1) ctx.scale(-1, 1)
 
-              if (this.facing === -1) {
-                ctx.scale(-1, 1)
-              }
-
-              // 攻击时的剑光效果
-              const swordGlow = Math.sin(time * 3) * 0.3 + 0.7
+              // 剑光效果
+              const swordGlow = Math.sin(time * 5) * 0.3 + 0.7
               ctx.shadowColor = `rgba(255, 215, 0, ${swordGlow})`
-              ctx.shadowBlur = 15
+              ctx.shadowBlur = 25 * mechScale
 
-              // 根据合体等级调整剑的大小
-              const swordScale = 0.8 + (this.teamLength * 0.1)
-              const swordWidth = 25 * swordScale * comboScale
-              const swordHeight = 50 * swordScale * comboScale
+              // 超大剑身
+              const swordW = 35 * mechScale
+              const swordH = 80 * mechScale
 
-              // 剑身斜向上指（攻击姿态）
-              ctx.rotate(-0.2)
-              ctx.drawImage(this.weaponImg, 0, -swordHeight, swordWidth, swordHeight)
+              // 剑稍微倾斜（攻击姿态）
+              ctx.rotate(-0.3)
 
-              // 剑身上的光芒
-              ctx.strokeStyle = `rgba(255, 255, 200, ${swordGlow * 0.5})`
-              ctx.lineWidth = 2
+              ctx.drawImage(this.weaponImg, 0, -swordH, swordW, swordH)
+
+              // 剑气尾焰
+              ctx.strokeStyle = `rgba(255, 200, 50, ${swordGlow * 0.6})`
+              ctx.lineWidth = 4 * mechScale
               ctx.beginPath()
-              ctx.moveTo(swordWidth * 0.3, -swordHeight * 0.9)
-              ctx.lineTo(swordWidth * 0.3, -swordHeight * 0.1)
+              ctx.moveTo(swordW * 0.3, -swordH * 0.95)
+              ctx.lineTo(swordW * 0.3, -swordH * 1.2)
               ctx.stroke()
 
               ctx.restore()
             }
 
-            // 合体光环（简单金色，不华丽）
-            const haloTime = time * 2
-            ctx.globalAlpha = 0.4
-            ctx.strokeStyle = '#FFD700'
-            ctx.lineWidth = 2
+            // ===== 腿部（简洁） =====
+            ctx.fillStyle = '#1a1a2e'
             ctx.beginPath()
-            ctx.ellipse(centerX, bodyTop + 35 * comboScale, 30 * comboScale, 15 * comboScale, 0, 0, Math.PI * 2)
+            ctx.moveTo(centerX - 25, bodyTop + 60 * mechScale)
+            ctx.lineTo(centerX - 20, bodyTop + 75 * mechScale)
+            ctx.lineTo(centerX - 10, bodyTop + 78 * mechScale)
+            ctx.lineTo(centerX, bodyTop + 80 * mechScale)
+            ctx.lineTo(centerX + 10, bodyTop + 78 * mechScale)
+            ctx.lineTo(centerX + 20, bodyTop + 75 * mechScale)
+            ctx.lineTo(centerX + 25, bodyTop + 60 * mechScale)
+            ctx.fill()
+
+            // ===== 能量光环 =====
+            ctx.globalAlpha = 0.3 + Math.sin(time * 2) * 0.1
+            ctx.strokeStyle = '#FFD700'
+            ctx.lineWidth = 4 * mechScale
+            ctx.beginPath()
+            ctx.ellipse(centerX, coreY, 50 * mechScale, 30 * mechScale, 0, 0, Math.PI * 2)
             ctx.stroke()
             ctx.globalAlpha = 1
 
-            // 名字
-            ctx.fillStyle = 'rgba(0,0,0,0.5)'
-            ctx.font = `bold ${12 * comboScale}px "Microsoft YaHei", sans-serif`
+            // ===== 名字 =====
+            ctx.font = `bold ${14 * mechScale}px "Microsoft YaHei", sans-serif`
             ctx.textAlign = 'center'
-            ctx.fillText(`${this.teamLength}翠合体`, centerX + 1, bodyTop - 8)
+            ctx.fillStyle = '#000'
+            ctx.fillText(`${num翠}翠机甲`, centerX + 1, bodyTop - 10)
             ctx.fillStyle = '#FFD700'
             ctx.shadowColor = 'rgba(0,0,0,0.8)'
-            ctx.shadowBlur = 3
-            ctx.fillText(`${this.teamLength}翠合体`, centerX, bodyTop - 9)
+            ctx.shadowBlur = 4
+            ctx.fillText(`${num翠}翠机甲`, centerX, bodyTop - 11)
 
             ctx.restore()
             return
@@ -1306,13 +1374,13 @@
             ctx.fill()
           }
 
-          // 5. 武器 - 保健剑（握在手中，不是背着的）
+          // 5. 武器 - 保健剑（握在手中，更大）
           if (this.weaponImg && this.weaponImg.complete) {
             ctx.save()
 
             // 剑握在右手中（朝向移动方向）
-            const swordBaseX = sx + 20 + 15 * this.facing
-            const swordBaseY = this.y + 35 // 手的高度
+            const swordBaseX = sx + 18 + 12 * this.facing
+            const swordBaseY = this.y + 32 // 手的高度
 
             ctx.translate(swordBaseX, swordBaseY)
 
@@ -1324,22 +1392,30 @@
             // 剑光效果
             const swordGlow = Math.sin(time * 3) * 0.3 + 0.7
             ctx.shadowColor = `rgba(255, 215, 0, ${swordGlow})`
-            ctx.shadowBlur = 12
+            ctx.shadowBlur = 15
 
             // 剑身倾斜向上（攻击姿态）
-            ctx.rotate(-0.15)
+            ctx.rotate(-0.2)
 
             // 轻微的上下挥动动画
             const swingOffset = this.onGround
               ? Math.sin(time * 2 + this.index) * 2
-              : -3
+              : -4
             ctx.translate(0, swingOffset)
 
             // 跳跃时剑举得更高
-            const jumpScale = !this.onGround ? 1.15 : 1
+            const jumpScale = !this.onGround ? 1.2 : 1
 
-            // 绘制宝剑
-            ctx.drawImage(this.weaponImg, 0, -55 * jumpScale, 24 * jumpScale, 50 * jumpScale)
+            // 绘制宝剑（更大）
+            ctx.drawImage(this.weaponImg, 0, -60 * jumpScale, 28 * jumpScale, 55 * jumpScale)
+
+            // 剑光芒
+            ctx.strokeStyle = `rgba(255, 255, 200, ${swordGlow * 0.4})`
+            ctx.lineWidth = 2
+            ctx.beginPath()
+            ctx.moveTo(28 * jumpScale * 0.3, -60 * jumpScale * 0.95)
+            ctx.lineTo(28 * jumpScale * 0.3, -60 * jumpScale * 0.1)
+            ctx.stroke()
 
             ctx.restore()
           }
@@ -1891,15 +1967,6 @@
             })
           }
 
-          bindAction('btnAttack', 'z', () => {
-            this.team.forEach((m) => {
-              if (!m.dead) {
-                const atk = m.attack()
-                if (atk) this.attacks.push(atk)
-              }
-            })
-          })
-
           bindAction('btnFire', 'x', () => {
             this.team.forEach((m) => {
               if (!m.dead) {
@@ -1920,6 +1987,26 @@
 
           bindAction('btnCombine', 'v', () => {
             this.combine()
+          })
+
+          // 剑气风暴
+          bindAction('btnBlade', 'b', () => {
+            this.team.forEach((m) => {
+              if (!m.dead) {
+                const skills = m.skillBladeStorm()
+                if (skills) this.attacks.push(...skills)
+              }
+            })
+          })
+
+          // 天剑降临
+          bindAction('btnHeaven', 'n', () => {
+            this.team.forEach((m) => {
+              if (!m.dead) {
+                const s = m.skillHeavenSword()
+                if (s) this.attacks.push(s)
+              }
+            })
           })
         }
 
@@ -2093,16 +2180,6 @@
           if (this.cameraX < 0) this.cameraX = 0
 
           // ===== 攻击处理 =====
-          // 普攻
-          if (this.input.wasPressed('z')) {
-            this.team.forEach((m) => {
-              if (!m.dead) {
-                const atk = m.attack()
-                if (atk) this.attacks.push(atk)
-              }
-            })
-          }
-
           // 火系
           if (this.input.wasPressed('x')) {
             this.team.forEach((m) => {
@@ -2126,6 +2203,26 @@
           // 合体
           if (this.input.wasPressed('v')) {
             this.combine()
+          }
+
+          // 剑气风暴
+          if (this.input.wasPressed('b')) {
+            this.team.forEach((m) => {
+              if (!m.dead) {
+                const skills = m.skillBladeStorm()
+                if (skills) this.attacks.push(...skills)
+              }
+            })
+          }
+
+          // 天剑降临
+          if (this.input.wasPressed('n')) {
+            this.team.forEach((m) => {
+              if (!m.dead) {
+                const s = m.skillHeavenSword()
+                if (s) this.attacks.push(s)
+              }
+            })
           }
 
           // 更新攻击
@@ -2346,10 +2443,17 @@
             }
           })
 
-          // 队友
-          this.team.forEach((m) => {
-            if (!m.dead) m.draw(this.ctx, this.cameraX)
-          })
+          // 队友 - 合体时只画一个战斗机甲
+          const isAnyCombined = this.team.some((m) => m.isCombined)
+          if (isAnyCombined) {
+            // 只画第一个队员作为合体战斗机甲
+            const mainMech = this.team[0]
+            if (!mainMech.dead) mainMech.draw(this.ctx, this.cameraX)
+          } else {
+            this.team.forEach((m) => {
+              if (!m.dead) m.draw(this.ctx, this.cameraX)
+            })
+          }
 
           // 敌人
           this.enemies.forEach((e) => e.draw(this.ctx, this.cameraX))
@@ -2397,38 +2501,75 @@
               this.ctx.fillStyle = 'rgba(135, 206, 235, 0.9)'
               this.ctx.fillRect(sx + 5, a.y + 3, a.width - 10, a.height / 3)
               this.ctx.shadowBlur = 0
-            } else if (a.type === 'sword') {
-              // 剑气 - 带渐变和光效
-              this.ctx.shadowColor = a.owner ? a.owner.color : '#ffff00'
-              this.ctx.shadowBlur = 15
+            } else if (a.type === 'bladestorm') {
+              // 剑气风暴 - 旋转的紫色剑气
+              const bx = sx + a.width / 2
+              const by = a.y + a.height / 2
+              const time = Date.now() / 50
 
-              // 外发光
-              this.ctx.fillStyle = 'rgba(255, 255, 255, 0.5)'
-              this.ctx.fillRect(sx - 2, a.y + 8, a.width + 4, 24)
+              this.ctx.shadowColor = '#9933ff'
+              this.ctx.shadowBlur = 20
 
-              // 剑身渐变
-              const swordGrad = this.ctx.createLinearGradient(
-                sx,
-                a.y + 10,
-                sx + a.width,
-                a.y + 10,
-              )
-              swordGrad.addColorStop(0, '#ffffff')
-              swordGrad.addColorStop(0.3, a.owner ? a.owner.color : '#ffff00')
-              swordGrad.addColorStop(0.7, a.owner ? a.owner.color : '#ffff00')
-              swordGrad.addColorStop(1, '#ffffff')
+              // 绘制旋转的剑气
+              for (let i = 0; i < 3; i++) {
+                const angle = time + (i * Math.PI * 2 / 3)
+                const len = 25 + Math.sin(time * 2) * 5
+                this.ctx.strokeStyle = `rgba(153, 51, 255, ${0.8 - i * 0.2})`
+                this.ctx.lineWidth = 6 - i * 1.5
+                this.ctx.beginPath()
+                this.ctx.moveTo(bx, by)
+                this.ctx.lineTo(bx + Math.cos(angle) * len, by + Math.sin(angle) * len)
+                this.ctx.stroke()
+              }
 
-              this.ctx.fillStyle = swordGrad
-              this.ctx.fillRect(sx, a.y + 12, a.width, 16)
-
-              // 剑气纹理线
-              this.ctx.strokeStyle = '#ffffff'
-              this.ctx.lineWidth = 2
+              // 中心光球
+              this.ctx.fillStyle = '#ffffff'
               this.ctx.beginPath()
-              this.ctx.moveTo(sx + 5, a.y + 16)
-              this.ctx.lineTo(sx + a.width - 5, a.y + 16)
-              this.ctx.moveTo(sx + 5, a.y + 24)
-              this.ctx.lineTo(sx + a.width - 5, a.y + 24)
+              this.ctx.arc(bx, by, 8, 0, Math.PI * 2)
+              this.ctx.fill()
+              this.ctx.shadowBlur = 0
+            } else if (a.type === 'heavensword') {
+              // 天剑降临 - 从天而降的巨大剑光
+              const bx = sx + a.width / 2
+              const by = a.y + a.height / 2
+
+              this.ctx.shadowColor = '#00bcd4'
+              this.ctx.shadowBlur = 30
+
+              // 巨大剑身
+              const swordGrad = this.ctx.createLinearGradient(bx - a.width / 2, by, bx + a.width / 2, by)
+              swordGrad.addColorStop(0, '#ffffff')
+              swordGrad.addColorStop(0.3, '#00bcd4')
+              swordGrad.addColorStop(0.5, '#00e5ff')
+              swordGrad.addColorStop(0.7, '#00bcd4')
+              swordGrad.addColorStop(1, '#ffffff')
+              this.ctx.fillStyle = swordGrad
+
+              // 剑形
+              this.ctx.beginPath()
+              this.ctx.moveTo(bx, by - a.height / 2)
+              this.ctx.lineTo(bx + a.width / 4, by - a.height / 4)
+              this.ctx.lineTo(bx + a.width / 2, by + a.height / 3)
+              this.ctx.lineTo(bx, by + a.height / 2)
+              this.ctx.lineTo(bx - a.width / 2, by + a.height / 3)
+              this.ctx.lineTo(bx - a.width / 4, by - a.height / 4)
+              this.ctx.closePath()
+              this.ctx.fill()
+
+              // 剑身上的光芒
+              this.ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)'
+              this.ctx.lineWidth = 3
+              this.ctx.beginPath()
+              this.ctx.moveTo(bx, by - a.height / 3)
+              this.ctx.lineTo(bx, by + a.height / 3)
+              this.ctx.stroke()
+
+              // 冲击波
+              const waveAlpha = a.life / 60 * 0.5
+              this.ctx.strokeStyle = `rgba(0, 188, 212, ${waveAlpha})`
+              this.ctx.lineWidth = 4
+              this.ctx.beginPath()
+              this.ctx.arc(bx, by, a.width * 0.8, 0, Math.PI * 2)
               this.ctx.stroke()
               this.ctx.shadowBlur = 0
             }
