@@ -1197,7 +1197,7 @@
               ctx.save()
 
               // 剑柄位置在右手（手的位置）
-              const handX = centerX + 45 * mechScale + armSwing
+              const handX = centerX + 55 * mechScale + armSwing
               const handY = shoulderY + 40 * mechScale + armBounce
 
               ctx.translate(handX, handY)
@@ -1215,8 +1215,8 @@
               ctx.shadowColor = `rgba(255, 215, 0, ${swordGlow})`
               ctx.shadowBlur = 25 * mechScale
 
-              // 统一缩放（合体形态更大一些）
-              const scale = 1.5 * mechScale
+              // 统一缩放（0.1倍，握在手里）
+              const scale = 0.1 * mechScale
               ctx.scale(scale, scale)
 
               // 绘制宝剑，剑柄在手位置，剑尖向下
@@ -1507,7 +1507,7 @@
             ctx.save()
 
             // 剑握在右手中（手的位置）
-            const handX = sx + 32 + 8 * this.facing
+            const handX = sx + 40 + 8 * this.facing
             const handY = this.y + 35
 
             // 劈砍动作动画（释放技能时）
@@ -1518,8 +1518,8 @@
               : -4
             // 跳跃时剑举得更高
             const jumpScale = !this.onGround ? 1.1 : 1
-            // 统一缩放不变形
-            const scale = 1.0 * jumpScale
+            // 统一缩放不变形（0.1倍，握在手里）
+            const scale = 0.1 * jumpScale
 
             ctx.translate(handX, handY + swingOffset)
 
