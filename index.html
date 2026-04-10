@@ -7,7 +7,7 @@
       content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
     />
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <title>七翠救奶奶</title>
+    <title>七翠救奶奶 - 仙侠传说</title>
     <style>
       * {
         margin: 0;
@@ -580,7 +580,7 @@
               btn.style.transform = 'scale(0.9)'
             })
             btn.addEventListener('touchend', (e) => {
-              e.preventDefault()
+              if (e.cancelable) e.preventDefault()
               this.keys[key] = false
               btn.style.transform = ''
             })
@@ -678,9 +678,6 @@
           this.onGround = false
           this.facing = 1
           this.isCrouching = false
-          this.attackTimer = 0
-          this.skillFireTimer = 0
-          this.skillWaterTimer = 0
           this.weaponLevel = 1
           this.isCombined = false
           this.jumpTimer = 0
@@ -691,6 +688,8 @@
           // 武侠风格动作追踪
           this.isMoving = false
           this.runCycle = 0
+          // 合体时使用的队伍长度
+          this.teamLength = 1
         }
 
         update(input, platforms) {
@@ -759,87 +758,92 @@
             this.vx = 0
           }
           if (this.y > CONFIG.HEIGHT) this.dead = true
-
-          // 冷却
-          if (this.attackTimer > 0) this.attackTimer--
-          if (this.skillFireTimer > 0) this.skillFireTimer--
-          if (this.skillWaterTimer > 0) this.skillWaterTimer--
-        }
-
-        canAttack() {
-          return this.attackTimer === 0
         }
 
         attack() {
-          if (this.attackTimer > 0) return null
-          this.attackTimer = 15
+          const damage = this.weaponLevel * (this.isCombined ? 4 : 1) * (this.isCombined ? 3 : 1)
+          const range = 70 + this.weaponLevel * 5 + (this.isCombined ? 40 : 0)
 
-          const damage = this.weaponLevel * (this.isCombined ? 4 : 1)
-          const range = 70 + this.weaponLevel * 5
+          // 攻击范围从角色中心向外扩展，确保近距离也能攻击到
+          const attackX = this.facing === 1 ? this.x - range / 2 : this.x - range / 2
 
           return {
-            x: this.facing === 1 ? this.x + this.width : this.x - range,
+            x: attackX,
             y: this.y + 10,
             width: range,
-            height: 40,
+            height: 50,
             damage: damage,
             type: 'sword',
-            life: 10,
+            life: 15,
             owner: this,
+            // 攻击特效参数
+            isSweep: true,
+            sweepAngle: this.facing * 0.3,
           }
         }
 
         skillFire() {
-          if (this.skillFireTimer > 0) return null
-          this.skillFireTimer = 60
-
-          const damage = 30 * this.weaponLevel * (this.isCombined ? 4 : 1)
+          const damage = 30 * this.weaponLevel * (this.isCombined ? 4 : 1) * (this.isCombined ? 2 : 1)
 
           return {
             x: this.x + this.width / 2,
             y: this.y + 15,
-            width: 60,
-            height: 30,
+            width: this.isCombined ? 100 : 60,
+            height: this.isCombined ? 50 : 30,
             damage: damage,
             type: 'fire',
-            vx: this.facing * 6,
+            vx: this.facing * (this.isCombined ? 10 : 6),
             vy: 0,
-            life: 50,
+            life: this.isCombined ? 80 : 50,
             owner: this,
           }
         }
 
         skillWater() {
-          if (this.skillWaterTimer > 0) return null
-          this.skillWaterTimer = 45
-
-          const damage = 20 * this.weaponLevel * (this.isCombined ? 4 : 1)
+          const damage = 20 * this.weaponLevel * (this.isCombined ? 4 : 1) * (this.isCombined ? 2 : 1)
+          const isCombo = this.isCombined
+          const w = isCombo ? 80 : 50
+          const h = isCombo ? 40 : 25
+          const spd = isCombo ? 8 : 5
+          const life = isCombo ? 50 : 35
 
           return [
             {
               x: this.x + this.width / 2,
               y: this.y + 20,
-              width: 50,
-              height: 25,
+              width: w,
+              height: h,
               damage: damage,
               type: 'water',
-              vx: 5,
+              vx: spd,
               vy: 0,
-              life: 35,
+              life: life,
               owner: this,
             },
             {
               x: this.x + this.width / 2,
               y: this.y + 20,
-              width: 50,
-              height: 25,
+              width: w,
+              height: h,
               damage: damage,
               type: 'water',
-              vx: -5,
+              vx: -spd,
               vy: 0,
-              life: 35,
+              life: life,
               owner: this,
             },
+            ...(isCombo ? [{
+              x: this.x + this.width / 2,
+              y: this.y,
+              width: w,
+              height: h,
+              damage: damage,
+              type: 'water',
+              vx: spd * 0.7,
+              vy: 3,
+              life: life,
+              owner: this,
+            }] : []),
           ]
         }
 
@@ -866,6 +870,219 @@
           const time = Date.now() / 300
 
           ctx.save()
+
+          // ===== 合体形态 - 一个更强大的大人物 =====
+          if (this.isCombined) {
+            // 根据翠翠数量决定体型大小（每增加一个+0.15）
+            const comboScale = 1.0 + (this.teamLength * 0.15)
+            const baseWidth = 40 * comboScale
+            const baseHeight = 60 * comboScale
+            const centerX = sx + 20
+            const bodyTop = this.y
+
+            // 阴影（更大）
+            ctx.fillStyle = 'rgba(0,0,0,0.3)'
+            ctx.beginPath()
+            ctx.ellipse(centerX, this.y + baseHeight - 5, 22 * comboScale, 10 * comboScale, 0, 0, Math.PI * 2)
+            ctx.fill()
+
+            // 飘带动画
+            const sway = Math.sin(time + this.index) * 5
+
+            // 1. 仙侠长袍（合体版，更大更威武）
+            const robeJumpOffset = !this.onGround ? -5 * comboScale : 0
+            const robeGrad = ctx.createLinearGradient(
+              centerX - baseWidth * 0.5,
+              bodyTop + 25 * comboScale + robeJumpOffset,
+              centerX + baseWidth * 0.5,
+              bodyTop + baseHeight,
+            )
+            robeGrad.addColorStop(0, this.color)
+            robeGrad.addColorStop(0.5, this.darkenColor(this.color, -20))
+            robeGrad.addColorStop(1, this.darkenColor(this.color, -40))
+            ctx.fillStyle = robeGrad
+
+            // 袍身主体（更大）
+            ctx.beginPath()
+            ctx.moveTo(centerX - 14 * comboScale, bodyTop + 25 * comboScale + robeJumpOffset)
+            ctx.lineTo(centerX - 18 * comboScale, bodyTop + baseHeight - 5)
+            ctx.lineTo(centerX - 8 * comboScale, bodyTop + baseHeight - 10)
+            ctx.lineTo(centerX, bodyTop + baseHeight)
+            ctx.lineTo(centerX + 8 * comboScale, bodyTop + baseHeight - 10)
+            ctx.lineTo(centerX + 18 * comboScale, bodyTop + baseHeight - 5)
+            ctx.lineTo(centerX + 14 * comboScale, bodyTop + 25 * comboScale + robeJumpOffset)
+            ctx.closePath()
+            ctx.fill()
+
+            // 袍摆飘带（合体版）
+            const robeSway = !this.onGround ? sway * 1.5 : sway
+            ctx.fillStyle = this.color
+            ctx.globalAlpha = 0.7
+            ctx.beginPath()
+            ctx.moveTo(centerX - 15 * comboScale, bodyTop + 50 * comboScale + robeJumpOffset)
+            ctx.quadraticCurveTo(
+              centerX - 25 * comboScale + robeSway,
+              bodyTop + baseHeight - 10,
+              centerX - 18 * comboScale + robeSway * 1.5,
+              bodyTop + baseHeight + 5,
+            )
+            ctx.lineTo(centerX - 10 * comboScale, bodyTop + baseHeight - 5)
+            ctx.fill()
+            ctx.globalAlpha = 1
+
+            // 2. 宽大袖子（合体版）
+            const runBounce = this.isMoving && this.onGround ? Math.sin(this.runCycle) * 3 : 0
+            const armSwing = this.isMoving && this.onGround ? Math.sin(this.runCycle) * 8 : 0
+            const jumpArmOffset = !this.onGround ? -12 : 0
+            ctx.fillStyle = this.darkenColor(this.color, -10)
+            // 左袖
+            ctx.beginPath()
+            ctx.moveTo(centerX - 14 * comboScale, bodyTop + 28 * comboScale - runBounce + jumpArmOffset)
+            ctx.quadraticCurveTo(
+              centerX - 30 * comboScale - armSwing,
+              bodyTop + 40 * comboScale + jumpArmOffset,
+              centerX - 28 * comboScale - armSwing,
+              bodyTop + 55 * comboScale + runBounce + jumpArmOffset,
+            )
+            ctx.quadraticCurveTo(
+              centerX - 18 * comboScale,
+              bodyTop + 48 * comboScale,
+              centerX - 12 * comboScale,
+              bodyTop + 38 * comboScale - runBounce + jumpArmOffset,
+            )
+            ctx.fill()
+            // 右袖（握剑的手这边更大）
+            ctx.beginPath()
+            ctx.moveTo(centerX + 14 * comboScale, bodyTop + 28 * comboScale - runBounce + jumpArmOffset)
+            ctx.quadraticCurveTo(
+              centerX + 35 * comboScale + armSwing,
+              bodyTop + 38 * comboScale + jumpArmOffset,
+              centerX + 32 * comboScale + armSwing,
+              bodyTop + 50 * comboScale + runBounce + jumpArmOffset,
+            )
+            ctx.quadraticCurveTo(
+              centerX + 22 * comboScale,
+              bodyTop + 45 * comboScale,
+              centerX + 12 * comboScale,
+              bodyTop + 38 * comboScale - runBounce + jumpArmOffset,
+            )
+            ctx.fill()
+
+            // 3. 金色腰带（合体版）
+            ctx.fillStyle = '#FFD700'
+            ctx.fillRect(centerX - 14 * comboScale, bodyTop + 35 * comboScale, 28 * comboScale, 6 * comboScale)
+            ctx.fillStyle = '#FFA500'
+            ctx.fillRect(centerX - 2 * comboScale, bodyTop + 33 * comboScale, 4 * comboScale, 10 * comboScale)
+            ctx.fillStyle = this.color
+            ctx.beginPath()
+            ctx.arc(centerX, bodyTop + 38 * comboScale, 4 * comboScale, 0, Math.PI * 2)
+            ctx.fill()
+
+            // 4. 头部（只有一个头像，但更大）
+            const headBob = this.isMoving && this.onGround ? Math.sin(this.runCycle * 2) * 2 : 0
+            const jumpHeadOffset = !this.onGround ? -5 : 0
+            const headSize = 15 * comboScale
+            const headY = bodyTop + 15 * comboScale + headBob + jumpHeadOffset
+
+            // 发髻
+            ctx.fillStyle = '#2a1a0a'
+            ctx.beginPath()
+            ctx.arc(centerX, headY + headSize * 0.3, headSize, Math.PI, 0)
+            ctx.fill()
+            ctx.fillRect(centerX - headSize, headY - headSize * 0.5, headSize * 2, headSize * 0.8)
+            // 发髻顶
+            ctx.beginPath()
+            ctx.arc(centerX, headY - headSize * 0.3, headSize * 0.5, 0, Math.PI * 2)
+            ctx.fill()
+            // 发簪
+            ctx.fillStyle = '#FFD700'
+            ctx.fillRect(centerX - 2 * comboScale, headY - headSize * 0.8, 4 * comboScale, headSize * 0.8)
+            ctx.beginPath()
+            ctx.arc(centerX, headY - headSize * 0.6, 3 * comboScale, 0, Math.PI * 2)
+            ctx.fill()
+
+            // 头像（只有一个，保留原始）
+            if (this.avatar && this.avatar.complete) {
+              ctx.save()
+              ctx.translate(centerX, headY)
+              ctx.shadowColor = 'rgba(255,255,255,0.4)'
+              ctx.shadowBlur = 12
+              ctx.beginPath()
+              ctx.arc(0, 0, headSize, 0, Math.PI * 2)
+              ctx.clip()
+              ctx.drawImage(this.avatar, -headSize, -headSize, headSize * 2, headSize * 2)
+              ctx.restore()
+            } else {
+              ctx.fillStyle = '#f5d5a8'
+              ctx.beginPath()
+              ctx.arc(centerX, headY, headSize, 0, Math.PI * 2)
+              ctx.fill()
+            }
+
+            // 5. 保健剑 - 握在手中（不是背着的！）
+            if (this.weaponImg && this.weaponImg.complete) {
+              ctx.save()
+
+              // 剑柄位置在右手中
+              const swordBaseX = centerX + 20 * comboScale * this.facing
+              const swordBaseY = bodyTop + 40 * comboScale
+
+              ctx.translate(swordBaseX, swordBaseY)
+
+              if (this.facing === -1) {
+                ctx.scale(-1, 1)
+              }
+
+              // 攻击时的剑光效果
+              const swordGlow = Math.sin(time * 3) * 0.3 + 0.7
+              ctx.shadowColor = `rgba(255, 215, 0, ${swordGlow})`
+              ctx.shadowBlur = 15
+
+              // 根据合体等级调整剑的大小
+              const swordScale = 0.8 + (this.teamLength * 0.1)
+              const swordWidth = 25 * swordScale * comboScale
+              const swordHeight = 50 * swordScale * comboScale
+
+              // 剑身斜向上指（攻击姿态）
+              ctx.rotate(-0.2)
+              ctx.drawImage(this.weaponImg, 0, -swordHeight, swordWidth, swordHeight)
+
+              // 剑身上的光芒
+              ctx.strokeStyle = `rgba(255, 255, 200, ${swordGlow * 0.5})`
+              ctx.lineWidth = 2
+              ctx.beginPath()
+              ctx.moveTo(swordWidth * 0.3, -swordHeight * 0.9)
+              ctx.lineTo(swordWidth * 0.3, -swordHeight * 0.1)
+              ctx.stroke()
+
+              ctx.restore()
+            }
+
+            // 合体光环（简单金色，不华丽）
+            const haloTime = time * 2
+            ctx.globalAlpha = 0.4
+            ctx.strokeStyle = '#FFD700'
+            ctx.lineWidth = 2
+            ctx.beginPath()
+            ctx.ellipse(centerX, bodyTop + 35 * comboScale, 30 * comboScale, 15 * comboScale, 0, 0, Math.PI * 2)
+            ctx.stroke()
+            ctx.globalAlpha = 1
+
+            // 名字
+            ctx.fillStyle = 'rgba(0,0,0,0.5)'
+            ctx.font = `bold ${12 * comboScale}px "Microsoft YaHei", sans-serif`
+            ctx.textAlign = 'center'
+            ctx.fillText(`${this.teamLength}翠合体`, centerX + 1, bodyTop - 8)
+            ctx.fillStyle = '#FFD700'
+            ctx.shadowColor = 'rgba(0,0,0,0.8)'
+            ctx.shadowBlur = 3
+            ctx.fillText(`${this.teamLength}翠合体`, centerX, bodyTop - 9)
+
+            ctx.restore()
+            return
+          }
+
+          // ===== 普通武侠人物绘制 =====
 
           // 武侠残影效果（快速移动时）
           if (this.isMoving && this.onGround && Math.abs(this.vx) > 3) {
@@ -912,8 +1129,6 @@
             Math.PI * 2,
           )
           ctx.fill()
-
-          // ===== 武侠人物绘制 =====
 
           // 飘带动画
           const sway = Math.sin(time + this.index) * 5
@@ -1091,91 +1306,42 @@
             ctx.fill()
           }
 
-          // 5. 武器 - 保健剑（根据facing翻转 + 跳跃姿势）
+          // 5. 武器 - 保健剑（握在手中，不是背着的）
           if (this.weaponImg && this.weaponImg.complete) {
             ctx.save()
 
-            // 剑的放置位置（靠近角色手部）
-            const swordX = sx + 22
-            // 跳跃时剑举得更高
-            const jumpOffset = !this.onGround ? -15 : 0
-            const swordY = this.y + 5 + jumpOffset
+            // 剑握在右手中（朝向移动方向）
+            const swordBaseX = sx + 20 + 15 * this.facing
+            const swordBaseY = this.y + 35 // 手的高度
 
-            // 设置变换中心点（剑柄位置）
-            ctx.translate(swordX, swordY)
+            ctx.translate(swordBaseX, swordBaseY)
 
-            // 根据朝向翻转图片（让剑尖朝向移动方向）
+            // 根据朝向翻转
             if (this.facing === -1) {
               ctx.scale(-1, 1)
             }
 
-            // 轻微的上下挥动动画（武侠风中剑随身动）
+            // 剑光效果
+            const swordGlow = Math.sin(time * 3) * 0.3 + 0.7
+            ctx.shadowColor = `rgba(255, 215, 0, ${swordGlow})`
+            ctx.shadowBlur = 12
+
+            // 剑身倾斜向上（攻击姿态）
+            ctx.rotate(-0.15)
+
+            // 轻微的上下挥动动画
             const swingOffset = this.onGround
               ? Math.sin(time * 2 + this.index) * 2
               : -3
             ctx.translate(0, swingOffset)
 
-            // 攻击时的剑气效果
-            if (this.attackTimer > 5) {
-              // 剑气光晕
-              ctx.shadowColor = '#FFD700'
-              ctx.shadowBlur = 20 + (this.attackTimer - 5) * 3
+            // 跳跃时剑举得更高
+            const jumpScale = !this.onGround ? 1.15 : 1
 
-              // 剑气拖尾
-              ctx.globalAlpha = 0.5
-              ctx.fillStyle = 'rgba(255, 255, 255, 0.3)'
-              ctx.beginPath()
-              ctx.moveTo(28, -45)
-              ctx.lineTo(50, -40)
-              ctx.lineTo(50, -20)
-              ctx.lineTo(28, -15)
-              ctx.closePath()
-              ctx.fill()
-              ctx.globalAlpha = 1
-            }
-
-            // 绘制宝剑（根据角色大小调整）
-            ctx.drawImage(this.weaponImg, 0, -55, 28, 58)
+            // 绘制宝剑
+            ctx.drawImage(this.weaponImg, 0, -55 * jumpScale, 24 * jumpScale, 50 * jumpScale)
 
             ctx.restore()
-          }
-
-          // 攻击时的剑光特效（剑本身外的光效）
-          if (this.attackTimer > 8) {
-            ctx.save()
-            ctx.translate(sx + 22, this.y + 5)
-            if (this.facing === -1) ctx.scale(-1, 1)
-
-            // 剑光
-            ctx.globalAlpha = (this.attackTimer - 8) / 7
-            const lightGrad = ctx.createLinearGradient(0, -55, 0, 3)
-            lightGrad.addColorStop(0, 'rgba(255, 255, 200, 0.8)')
-            lightGrad.addColorStop(0.5, 'rgba(255, 215, 0, 0.4)')
-            lightGrad.addColorStop(1, 'rgba(255, 100, 0, 0)')
-            ctx.fillStyle = lightGrad
-            ctx.fillRect(0, -55, 28, 58)
-
-            ctx.globalAlpha = 1
-            ctx.restore()
-          }
-
-          // 合体光环 - 金色旋转光环
-          if (this.isCombined) {
-            const haloTime = time * 2
-            for (let i = 0; i < 4; i++) {
-              const angle = haloTime + (i * Math.PI) / 2
-              const hx = sx + 20 + Math.cos(angle) * 40
-              const hy = this.y + 30 + Math.sin(angle) * 15
-              ctx.fillStyle = 'rgba(255, 215, 0, 0.7)'
-              ctx.beginPath()
-              ctx.arc(hx, hy, 6, 0, Math.PI * 2)
-              ctx.fill()
-            }
-            ctx.strokeStyle = 'rgba(255, 215, 0, 0.5)'
-            ctx.lineWidth = 4
-            ctx.beginPath()
-            ctx.ellipse(sx + 20, this.y + 35, 50, 25, 0, 0, Math.PI * 2)
-            ctx.stroke()
           }
 
           // 名字
@@ -1727,7 +1893,7 @@
 
           bindAction('btnAttack', 'z', () => {
             this.team.forEach((m) => {
-              if (!m.dead && m.canAttack()) {
+              if (!m.dead) {
                 const atk = m.attack()
                 if (atk) this.attacks.push(atk)
               }
@@ -1736,7 +1902,7 @@
 
           bindAction('btnFire', 'x', () => {
             this.team.forEach((m) => {
-              if (!m.dead && m.skillFireTimer === 0) {
+              if (!m.dead) {
                 const s = m.skillFire()
                 if (s) this.attacks.push(s)
               }
@@ -1745,7 +1911,7 @@
 
           bindAction('btnWater', 'c', () => {
             this.team.forEach((m) => {
-              if (!m.dead && m.skillWaterTimer === 0) {
+              if (!m.dead) {
                 const skills = m.skillWater()
                 if (skills) this.attacks.push(...skills)
               }
@@ -1805,7 +1971,9 @@
             i,
           )
           m.weaponLevel = this.stage
+          // 更新所有队员的teamLength
           this.team.push(m)
+          this.team.forEach((p) => (p.teamLength = this.team.length))
           this.updateTeamIcons()
         }
 
@@ -1868,19 +2036,17 @@
             m.isCombined = !hasCombined
           })
 
+          // 简单的合体特效（减少粒子数量）
           const main = this.team[0]
-          for (let i = 0; i < 20; i++) {
-            // 合体特效 - 金色星星
-            for (let i = 0; i < 30; i++) {
-              this.particles.push(
-                new Particle(
-                  main.x + 20 + (Math.random() - 0.5) * 60,
-                  main.y + 30 + (Math.random() - 0.5) * 60,
-                  '#ffd700',
-                  'sparkle',
-                ),
-              )
-            }
+          for (let i = 0; i < 10; i++) {
+            this.particles.push(
+              new Particle(
+                main.x + 20 + (Math.random() - 0.5) * 40,
+                main.y + 30 + (Math.random() - 0.5) * 40,
+                '#ffd700',
+                'sparkle',
+              ),
+            )
           }
 
           this.showEffectText(
@@ -1913,7 +2079,9 @@
             if (i === 0) {
               m.update(this.input, this.platforms)
             } else {
-              const targetX = this.team[i - 1].x - 35
+              // 合体时队友分散排列成阵型，否则紧跟在后面
+              const spacing = m.isCombined ? 45 : 35
+              const targetX = this.team[i - 1].x - spacing
               m.x += (targetX - m.x) * 0.15
               m.y = this.team[i - 1].y
               m.facing = this.team[i - 1].facing
@@ -1928,7 +2096,7 @@
           // 普攻
           if (this.input.wasPressed('z')) {
             this.team.forEach((m) => {
-              if (!m.dead && m.canAttack()) {
+              if (!m.dead) {
                 const atk = m.attack()
                 if (atk) this.attacks.push(atk)
               }
@@ -1938,7 +2106,7 @@
           // 火系
           if (this.input.wasPressed('x')) {
             this.team.forEach((m) => {
-              if (!m.dead && m.skillFireTimer === 0) {
+              if (!m.dead) {
                 const s = m.skillFire()
                 if (s) this.attacks.push(s)
               }
@@ -1948,7 +2116,7 @@
           // 水系
           if (this.input.wasPressed('c')) {
             this.team.forEach((m) => {
-              if (!m.dead && m.skillWaterTimer === 0) {
+              if (!m.dead) {
                 const skills = m.skillWater()
                 if (skills) this.attacks.push(...skills)
               }
@@ -2112,20 +2280,6 @@
               main.weaponLevel
           }
           document.getElementById('stageNum').textContent = this.stage
-
-          if (main) {
-            const fireCd = (main.skillFireTimer / 60) * 100
-            document.getElementById('cdFire').style.height = fireCd + '%'
-            document
-              .getElementById('skillFire')
-              .classList.toggle('ready', main.skillFireTimer === 0)
-
-            const waterCd = (main.skillWaterTimer / 45) * 100
-            document.getElementById('cdWater').style.height = waterCd + '%'
-            document
-              .getElementById('skillWater')
-              .classList.toggle('ready', main.skillWaterTimer === 0)
-          }
         }
 
         stageClear() {
